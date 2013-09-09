@@ -127,44 +127,13 @@ def parseOsm(source, handler):
         elem.clear()
 
 _new_uid_edit_region_channels = {
-    "#osm-ar": ("ar",),
-    "#osm-au": ("au",),
-    "#osm-bd": ("bd",),
-    "#osm-be": ("be",),
-    "#osm-br": ("br",),
-    "#osm-by": ("by",),
-    "#osm-ca": ("ca",),
-    "#osm-ch": ("ch",),
-    "#osm-de-announce": ("de",),
-    "#osm-dk": ("dk",),
-    "#osm-do": ("do",),
-    "#osm-es": ("es",),
-    "#osm-fi": ("fi",),
-    "#osm-fr": ("fr",),
-    "#osm-gb": ("gb",),
-    "#osm-ht": ("ht",),
-    "#osm-ie": ("ie",),
-    "#osm-it": ("it",),
-    "#osm-ja": ("jp",),
-    "#osm-lv": ("lv",),
-    "#osm-ly": ("ly",),
-    "#osm-nl": ("nl",),
-    "#osm-no": ("no",),
-    "#osm-nl": ("nl",),
-    "#osm-no": ("no",),
-    "#osm-ph": ("ph",),
-    "#osm-pl": ("pl",),
-    "#osm-ps": ("ps",),
-    "#osm-ru": ("ru",),
-    "#OSM.se": ("se",),
-    "#osm-ua": ("ua",),
-    "#osm-us": ("us",),
-    "#osm-za": ("za",),
+    "#osm-ie": ("Leinster","Munster","Ulster","Connacht",),
+    "#osmiebot": ("Leinster","Munster","Ulster","Connacht",),
 }
 
 _note_edit_region_channels = {
-    "#osm-us": ("us",),
-    "#osm-ie": ("ie",),
+    "#osm-ie": ("Leinster","Munster","Ulster","Connacht",),
+    "#osmiebot": ("Leinster","Munster","Ulster","Connacht",),
 }
 
 
@@ -233,11 +202,13 @@ class OSM(callbacks.Plugin):
         return True
 
     def reverse_geocode(self, lat, lon):
-        url = 'http://nominatim.openstreetmap.org/reverse?format=json&lat=%s&lon=%s' % (lat, lon)
+        url = 'http://nominatim.openstreetmap.ie/reverse?format=json&lat=%s&lon=%s' % (lat, lon)
+        log.info("Requesting %s" % url)
         urldata = urllib2.urlopen(url)
 
         location = ""
         country_code = None
+        state_district = None
         info = json.load(urldata)
         if 'address' in info:
             address = info.get('address')
@@ -248,6 +219,9 @@ class OSM(callbacks.Plugin):
                 location = address.get('country')
             if 'state' in address:
                 location = "%s, %s" % (address.get('state'), location)
+            if 'state_district' in address:
+                state_district = address.get('state_district')
+                location = "%s, %s" % (address.get('state_district'), location)
             if 'county' in address:
                 location = "%s, %s" % (address.get('county'), location)
             if 'administrative' in address:
@@ -260,7 +234,7 @@ class OSM(callbacks.Plugin):
             location = " near %s" % (location)
             location = location.encode('utf-8')
 
-        return (country_code, location)
+        return (state_district, location)
 
     def _notes_rss_poll(self):
         url_templ = 'http://api.openstreetmap.org/api/0.6/notes/%d.json'
@@ -292,7 +266,7 @@ class OSM(callbacks.Plugin):
                     country_code = None
 
                     if stathat:
-                        stathat.ez_post_count('ian.dees@gmail.com', 'new notes', 1, date_created.isoformat()+'Z')
+                        stathat.ez_post_count('donal.diamond@gmail.com', 'new notes', 1, date_created.isoformat()+'Z')
 
                     last_note_time = date_created
 
@@ -307,7 +281,7 @@ class OSM(callbacks.Plugin):
                     log.info("Response is %s" % response)
                     irc = world.ircs[0]
                     for chan in irc.state.channels:
-                        if chan == "#osm-bot" or country_code in _note_edit_region_channels.get(chan, ()):
+                        if country_code in _note_edit_region_channels.get(chan, ()):
                             msg = ircmsgs.privmsg(chan, response)
                             world.ircs[0].queueMsg(msg)
                 except urllib2.URLError, e:
@@ -315,8 +289,8 @@ class OSM(callbacks.Plugin):
                         log.info("%s doesn't exist. Stopping." % last_note_id)
                         last_note_id -= 1
 
-                        if (datetime.datetime.utcnow() - last_note_time).total_seconds() > 3600:
-                            msg = ircmsgs.privmsg('iandees', "No new notes since %s." % prettyDate(last_note_time))
+                        if (datetime.datetime.utcnow() - last_note_time).total_seconds() > 86400:
+                            msg = ircmsgs.privmsg('IrlJidel_w', "No new notes since %s." % prettyDate(last_note_time))
                             world.ircs[0].queueMsg(msg)
 
                         break
@@ -424,14 +398,14 @@ class OSM(callbacks.Plugin):
 
                     log.info(response)
                     for chan in irc.state.channels:
-                        if chan == "#osm-bot":
+                        if chan == "#osmiebot":
                             msg = ircmsgs.privmsg(chan, response)
                             world.ircs[0].queueMsg(msg)
                     seen_changesets[cs_id]['alerted_already'] = True
 
             log.info("There were %s users editing this time." % len(seen_uids))
             if stathat:
-                stathat.ez_post_value('ian.dees@gmail.com', 'users editing this minute', len(seen_uids), state['timestamp'])
+                stathat.ez_post_value('donal.diamond@gmail.com', 'users editing this minute', len(seen_uids), state['timestamp'])
 
             f = open('uid.txt', 'r')
             for line in f:
@@ -444,7 +418,7 @@ class OSM(callbacks.Plugin):
             f.close()
 
             if stathat:
-                stathat.ez_post_value('ian.dees@gmail.com', 'new users this minute', len(seen_uids), state['timestamp'])
+                stathat.ez_post_value('donal.diamond@gmail.com', 'new users this minute', len(seen_uids), state['timestamp'])
 
             f = open('uid.txt', 'a')
             for (uid, data) in seen_uids.iteritems():
@@ -462,7 +436,7 @@ class OSM(callbacks.Plugin):
                 log.info(response)
                 irc = world.ircs[0]
                 for chan in irc.state.channels:
-                    if chan == "#osm-bot" or country_code in _new_uid_edit_region_channels.get(chan, ()):
+                    if country_code in _new_uid_edit_region_channels.get(chan, ()):
                         msg = ircmsgs.privmsg(chan, response)
                         world.ircs[0].queueMsg(msg)
 
@@ -760,7 +734,7 @@ class OSM(callbacks.Plugin):
         """<tag key>[=<tag value>|*]
 
         Shows information about the specified tag key/value combination."""
-        baseUrl = "http://taginfo.openstreetmap.org"
+        baseUrl = "http://taginfo.openstreetmap.ie"
 
         if not tag_query:
             irc.error('You forgot to give me a tag_query.')
@@ -783,12 +757,12 @@ class OSM(callbacks.Plugin):
                 j = urllib2.urlopen('%s/api/2/db/keys/overview?key=%s' % (baseUrl, urllib.quote(k)), timeout=30.0)
                 data = json.load(j)
 
-                response = "Tag %s has %s values and appears %s times in the planet. http://taginfo.osm.org/keys/%s" % (k, data['all']['values'], data['all']['count'], urllib.quote(k))
+                response = "Tag %s has %s values and appears %s times for the island of Ireland. http://taginfo.openstreetmap.ie/keys/%s" % (k, data['all']['values'], data['all']['count'], urllib.quote(k))
             else:
                 j = urllib2.urlopen('%s/api/2/db/tags/overview?key=%s&value=%s' % (baseUrl, urllib.quote(k), urllib.quote(v)), timeout=30.0)
                 data = json.load(j)
 
-                response = "Tag %s=%s appears %s times in the planet. http://taginfo.osm.org/tags/%s" % (k, v, data['all']['count'], urllib.quote("%s=%s" % (k,v)))
+                response = "Tag %s=%s appears %s times for the island of Ireland. http://taginfo.openstreetmap.ie/tags/%s" % (k, v, data['all']['count'], urllib.quote("%s=%s" % (k,v)))
             irc.reply(response.encode('utf-8'))
         except urllib2.URLError as e:
             irc.error('There was an error connecting to the taginfo server. Try again later.')
