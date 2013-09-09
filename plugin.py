@@ -291,7 +291,7 @@ class OSM(callbacks.Plugin):
 
                         if (datetime.datetime.utcnow() - last_note_time).total_seconds() > 86400:
                             msg = ircmsgs.privmsg('IrlJidel_w', "No new notes since %s." % prettyDate(last_note_time))
-                            world.ircs[0].queueMsg(msg)
+                            #world.ircs[0].queueMsg(msg)
 
                         break
 
@@ -734,7 +734,6 @@ class OSM(callbacks.Plugin):
         """<tag key>[=<tag value>|*]
 
         Shows information about the specified tag key/value combination."""
-        baseUrl = "http://taginfo.openstreetmap.ie"
 
         if not tag_query:
             irc.error('You forgot to give me a tag_query.')
@@ -749,25 +748,31 @@ class OSM(callbacks.Plugin):
         else:
             k = tag_query
 
+        if k is None:
+            irc.error("I don't know how to parse that key/value pair.")
+            return
+        else:
+            self._taginfo_region("http://taginfo.openstreetmap.ie", "island of Ireland", irc, k, v)
+            self._taginfo_region("http://taginfo.openstreetmap.org", "planet", irc, k, v)
+    taginfo = wrap(taginfo, ['anything'])
+
+    def _taginfo_region(self, baseUrl, region, irc, k, v=None):
+
         try:
-            if k is None:
-                irc.error("I don't know how to parse that key/value pair.")
-                return
-            elif v is None:
+            if v is None:
                 j = urllib2.urlopen('%s/api/2/db/keys/overview?key=%s' % (baseUrl, urllib.quote(k)), timeout=30.0)
                 data = json.load(j)
 
-                response = "Tag %s has %s values and appears %s times for the island of Ireland. http://taginfo.openstreetmap.ie/keys/%s" % (k, data['all']['values'], data['all']['count'], urllib.quote(k))
+                response = "Tag %s has %s values and appears %s times in the %s. %s/keys/%s" % (k, data['all']['values'], data['all']['count'], region, baseUrl, urllib.quote(k))
             else:
                 j = urllib2.urlopen('%s/api/2/db/tags/overview?key=%s&value=%s' % (baseUrl, urllib.quote(k), urllib.quote(v)), timeout=30.0)
                 data = json.load(j)
 
-                response = "Tag %s=%s appears %s times for the island of Ireland. http://taginfo.openstreetmap.ie/tags/%s" % (k, v, data['all']['count'], urllib.quote("%s=%s" % (k,v)))
+                response = "Tag %s=%s appears %s times in the %s. %s/tags/%s" % (k, v, data['all']['count'], region, baseUrl, urllib.quote("%s=%s" % (k,v)))
             irc.reply(response.encode('utf-8'))
         except urllib2.URLError as e:
-            irc.error('There was an error connecting to the taginfo server. Try again later.')
+            irc.error("There was an error connecting to %s server. Try again later." % baseUrl)
             return
-    taginfo = wrap(taginfo, ['anything'])
 
 Class = OSM
 
