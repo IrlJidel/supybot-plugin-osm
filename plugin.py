@@ -204,7 +204,9 @@ class OSM(callbacks.Plugin):
     def reverse_geocode(self, lat, lon):
         url = 'http://nominatim.openstreetmap.ie/reverse?format=json&lat=%s&lon=%s' % (lat, lon)
         log.info("Requesting %s" % url)
-        urldata = urllib2.urlopen(url)
+        req = urllib2.Request(url)
+        req.add_header('User-agent', 'osmie-bot')
+        urldata = urllib2.urlopen(req)
 
         location = ""
         country_code = None
