@@ -291,9 +291,9 @@ class OSM(callbacks.Plugin):
                         log.info("%s doesn't exist. Stopping." % last_note_id)
                         last_note_id -= 1
 
-                        if (datetime.datetime.utcnow() - last_note_time).total_seconds() > 86400:
+                        if (datetime.datetime.utcnow() - last_note_time).total_seconds() > 3600:
                             msg = ircmsgs.privmsg('IrlJidel_w', "No new notes since %s." % prettyDate(last_note_time))
-                            #world.ircs[0].queueMsg(msg)
+                            world.ircs[0].queueMsg(msg)
 
                         break
 
