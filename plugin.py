@@ -127,13 +127,14 @@ def parseOsm(source, handler):
         elem.clear()
 
 _new_uid_edit_region_channels = {
-    "#osm-ie": ("Leinster","Munster","Ulster","Connacht",),
-    "#osmiebot": ("Leinster","Munster","Ulster","Connacht",),
+    "#osm-ie": ("Leinster","Munster","Ulster","Connacht","ie", ),
+    "#osmiebot": ("Leinster","Munster","Ulster","Connacht","ie", ),
 }
 
 _note_edit_region_channels = {
-    "#osm-ie": ("Leinster","Munster","Ulster","Connacht",),
-    "#osmiebot": ("Leinster","Munster","Ulster","Connacht",),
+
+    "#osm-ie": ("Leinster","Munster","Ulster","Connacht","ie", ),
+    "#osmiebot": ("Leinster","Munster","Ulster","Connacht","ie", ),
 }
 
 
@@ -236,7 +237,10 @@ class OSM(callbacks.Plugin):
             location = " near %s" % (location)
             location = location.encode('utf-8')
 
-        return (state_district, location)
+        if state_district is not None:
+            return (state_district, location)
+        else: 
+            return (country_code, location)
 
     def _notes_rss_poll(self):
         url_templ = 'http://api.openstreetmap.org/api/0.6/notes/%d.json'
