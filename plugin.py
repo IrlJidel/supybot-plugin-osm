@@ -452,10 +452,13 @@ class OSM(callbacks.Plugin):
                         country_code, location = self.reverse_geocode(data['lat'], data['lon'])
                     except urllib2.HTTPError as e:
                         log.error("HTTP problem when looking for edit location: %s" % (e))
+                # get changeset comment
+                changeset = self.changeset_details(data['changeset'])
                 if data['username'] not in self.watch_users:
-                    response = "%s just started editing%s with changeset http://osm.org/changeset/%s" % (data['username'], location, data['changeset'])
+                    response = "%s just started editing%s with changeset http://osm.org/changeset/%s with %s" % (data['username'], location, data['changeset'], changeset['tags'])
                 else:
-                    response = "Watched user %s editing%s with changeset http://osm.org/changeset/%s" % (data['username'], location, data['changeset'])
+                    response = "Watched user %s editing%s with changeset http://osm.org/changeset/%s with %s" % (data['username'], location, data['changeset'], changeset['tags'])
+ 
                 log.info(response)
                 irc = world.ircs[0]
                 for chan in irc.state.channels:
@@ -463,8 +466,6 @@ class OSM(callbacks.Plugin):
                     if country_code in _new_uid_edit_region_channels.get(chan, ()):
                         msg = ircmsgs.privmsg(chan, response)
                         world.ircs[0].queueMsg(msg)
-                        #changeset(self, irc, msg, args, changeset_id):
-                        #self.changeset(irc, ircmsgs.privmsg, None, data['changeset'])
 
             f.close()
 
