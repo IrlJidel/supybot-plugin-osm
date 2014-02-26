@@ -705,9 +705,24 @@ class OSM(callbacks.Plugin):
         """<username>
 
         Start reporting on edits for the given user."""
+        baseUrl = "http://osm.org"
 
         if not username:
             irc.error('You forgot to give me a username.')
+            return
+
+        quoted_uname = username
+        quoted_uname = urllib.quote(quoted_uname)
+
+        try:
+            xml = urllib2.urlopen('%s/user/%s/edits/feed' % (baseUrl, quoted_uname))
+        except urllib2.HTTPError as e:
+            response = "Username %s was not found." % (username)
+            irc.reply(response.encode('utf-8'))
+            return
+        except Exception as e:
+            irc.error("Could not parse the user's changeset feed.")
+            log.error(traceback.format_exc(e))
             return
 
         if username in _watch_users: 
