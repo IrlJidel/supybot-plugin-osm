@@ -665,46 +665,66 @@ class OSM(callbacks.Plugin):
             irc.error('You forgot to give me a changeset ID.')
             return
 
-        try:
-            xml = urllib2.urlopen('%s/api/0.6/changeset/%d' % (baseUrl, changeset_id))
-        except urllib2.HTTPError as e:
-            irc.error('Changeset %s was not found.' % (changeset_id))
-            return
 
-        tree = ElementTree.ElementTree(file=xml)
-        changeset_element = tree.find('changeset')
+	changeset = self.changeset_details(changeset_id) 
+	if not changeset:
+	    irc.error('Changeset %s was not found.' % (changeset_id))
+	    return
 
-        username = changeset_element.attrib['user']
-        currently_open = changeset_element.attrib['open']
-        created = isoToDatetime(changeset_element.attrib['created_at'])
+	response = "Changeset %s by %s opened %s %s with %s" % \
+		(changeset['id'], changeset['username'], changeset['created'], changeset['length'], changeset['tags'])
 
-        if currently_open == 'true':
-            length_str = "(still open)"
-        elif currently_open == 'false':
-            closed = isoToDatetime(changeset_element.attrib['closed_at'])
-            length_str = "open %s minutes" % ((closed - created).seconds / 60)
-
-        tag_strings = []
-        tag_elems = changeset_element.findall('tag')
-        for tag_elem in tag_elems:
-            k = tag_elem.attrib['k']
-            v = tag_elem.attrib['v']
-            tag_strings.append("%s=%s" % (k, v))
-
-        tag_strings = sorted(tag_strings, key=self.tagKeySortKey)
-
-        if len(tag_strings) == 0:
-            tag_str = 'no tags.'
-        elif len(tag_strings) == 1:
-            tag_str = 'tag %s' % (', '.join(tag_strings))
-        elif len(tag_strings) > 1:
-            tag_str = 'tags %s' % (', '.join(tag_strings))
-
-        response = "Changeset %s by %s opened %s %s with %s" % \
-                (changeset_id, username, prettyDate(created), length_str, tag_str)
 
         irc.reply(response.encode('utf-8'))
     changeset = wrap(changeset, ['int'])
+
+    def changeset_details(self, changeset_id):
+	baseUrl = "http://osm.org"
+
+	changeset = {}
+
+	try:
+	    xml = urllib2.urlopen('%s/api/0.6/changeset/%d' % (baseUrl, changeset_id))
+	except urllib2.HTTPError as e:
+	    return
+
+	tree = ElementTree.ElementTree(file=xml)
+	changeset_element = tree.find('changeset')
+
+	username = changeset_element.attrib['user']
+	currently_open = changeset_element.attrib['open']
+	created = isoToDatetime(changeset_element.attrib['created_at'])
+
+	if currently_open == 'true':
+	    length_str = "(still open)"
+	elif currently_open == 'false':
+	    closed = isoToDatetime(changeset_element.attrib['closed_at'])
+	    length_str = "open %s minutes" % ((closed - created).seconds / 60)
+
+	tag_strings = []
+	tag_elems = changeset_element.findall('tag')
+	for tag_elem in tag_elems:
+	    k = tag_elem.attrib['k']
+	    v = tag_elem.attrib['v']
+	    tag_strings.append("%s=%s" % (k, v))
+
+	tag_strings = sorted(tag_strings, key=self.tagKeySortKey)
+
+	if len(tag_strings) == 0:
+	    tag_str = 'no tags.'
+	elif len(tag_strings) == 1:
+	    tag_str = 'tag %s' % (', '.join(tag_strings))
+	elif len(tag_strings) > 1:
+	    tag_str = 'tags %s' % (', '.join(tag_strings))
+       
+	changeset['id'] = changeset_id
+	changeset['username'] = username
+	changeset['created'] = prettyDate(created)
+	changeset['length'] = length_str
+	changeset['tags'] = tag_str
+
+	return changeset
+
 
     def watch(self, irc, msg, args, username):
         """<username>
