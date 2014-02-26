@@ -768,8 +768,7 @@ class OSM(callbacks.Plugin):
         if not self.watch_users:
             response = "We are not watching anybody yet"
         else:
-            watched_users = ', '.join(self.watch_users) 
-            response = "Watching %s" % (watched_users)
+            response = "Watching %s" % (', '.join(self.watch_users))
 
         irc.reply(response.encode('utf-8'))
     watching = wrap(watching)
