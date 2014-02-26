@@ -137,6 +137,8 @@ _note_edit_region_channels = {
     "#osmiebot": ("Leinster","Munster","Ulster","Connacht","ie", ),
 }
 
+_watch_users = []
+
 
 class OSM(callbacks.Plugin):
     """Add the help for "@plugin help OSM" here
@@ -218,19 +220,21 @@ class OSM(callbacks.Plugin):
 
             country_code = address.get('country_code')
 
-            if 'country' in address:
-                location = address.get('country')
-            if 'state' in address:
-                location = "%s, %s" % (address.get('state'), location)
+            #if 'country' in address:
+            #    location = address.get('country')
+            #if 'state' in address:
+            #    location = "%s, %s" % (address.get('state'), location)
             if 'state_district' in address:
                 state_district = address.get('state_district')
-                location = "%s, %s" % (address.get('state_district'), location)
+                #location = "%s, %s" % (address.get('state_district'), location)
             if 'county' in address:
                 location = "%s, %s" % (address.get('county'), location)
             if 'administrative' in address:
                 location = "%s, %s" % (address.get('administrative'), location)
             if 'city' in address:
                 location = "%s, %s" % (address.get('city'), location)
+            if 'village' in address:
+                location = "%s, %s" % (address.get('village'), location)
             if 'hamlet' in address:
                 location = "%s, %s" % (address.get('hamlet'), location)
             if 'locality' in address:
@@ -319,6 +323,7 @@ class OSM(callbacks.Plugin):
                 return
 
             seen_uids = {}
+
             seen_changesets = self.seen_changesets
 
             state = self.readState('state.txt')
@@ -420,7 +425,7 @@ class OSM(callbacks.Plugin):
             f = open('uid.txt', 'r')
             for line in f:
                 for uid in seen_uids.keys():
-                    if uid in line:
+                    if uid in line and seen_uids[uid]['username'] not in _watch_users:
                         seen_uids.pop(uid)
                         continue
                 if len(seen_uids) == 0:
@@ -432,7 +437,8 @@ class OSM(callbacks.Plugin):
 
             f = open('uid.txt', 'a')
             for (uid, data) in seen_uids.iteritems():
-                f.write('%s\t%s\n' % (data['username'], uid))
+                if data['username'] not in _watch_users:
+                    f.write('%s\t%s\n' % (data['username'], uid))
 
                 location = ""
                 country_code = None
@@ -441,14 +447,19 @@ class OSM(callbacks.Plugin):
                         country_code, location = self.reverse_geocode(data['lat'], data['lon'])
                     except urllib2.HTTPError as e:
                         log.error("HTTP problem when looking for edit location: %s" % (e))
-
-                response = "%s just started editing%s with changeset http://osm.org/changeset/%s" % (data['username'], location, data['changeset'])
+                if data['username'] not in _watch_users:
+                    response = "%s just started editing%s with changeset http://osm.org/changeset/%s" % (data['username'], location, data['changeset'])
+                else:
+                    response = "Watched user %s editing%s with changeset http://osm.org/changeset/%s" % (data['username'], location, data['changeset'])
                 log.info(response)
                 irc = world.ircs[0]
                 for chan in irc.state.channels:
+                    #TODO: watched users shoudl be per channel
                     if country_code in _new_uid_edit_region_channels.get(chan, ()):
                         msg = ircmsgs.privmsg(chan, response)
                         world.ircs[0].queueMsg(msg)
+                        #changeset(self, irc, msg, args, changeset_id):
+                        #self.changeset(irc, ircmsgs.privmsg, None, data['changeset'])
 
             f.close()
 
@@ -689,6 +700,57 @@ class OSM(callbacks.Plugin):
 
         irc.reply(response.encode('utf-8'))
     changeset = wrap(changeset, ['int'])
+
+    def watch(self, irc, msg, args, username):
+        """<username>
+
+        Start reporting on edits for the given user."""
+
+        if not username:
+            irc.error('You forgot to give me a username.')
+            return
+
+        if username in _watch_users: 
+            response = "We are already watching %s" % (username)
+        else:
+            _watch_users.append(username)
+            #TODO: save
+            response = "We are now watching %s" % (username)
+
+        irc.reply(response.encode('utf-8'))
+    watch = wrap(watch, ['anything'])
+
+
+    def unwatch(self, irc, msg, args, username):
+        """<username>
+
+        Stop reporting on edits for the given user."""
+
+        if not username:
+            irc.error('You forgot to give me a username.')
+            return
+
+        if username in _watch_users: 
+            _watch_users.remove(username)
+            #TODO: save
+            response = "Stopped watching %s" % (username)
+        else:
+            response = "We weren't watching %s" % (username)
+
+        irc.reply(response.encode('utf-8'))
+    unwatch = wrap(unwatch, ['anything'])
+
+    def watching(self, irc, msg, args):
+        """Show list of users we are reporting edits for"""
+
+        if not _watch_users:
+            response = "We are not watching anybody yet"
+        else:
+            watched_users = ', '.join(_watch_users) 
+            response = "Watching %s" % (watched_users)
+
+        irc.reply(response.encode('utf-8'))
+    watching = wrap(watching)
 
     def last_edit(self, irc, msg, args, username):
         """<username>
