@@ -729,7 +729,8 @@ class OSM(callbacks.Plugin):
             response = "We are already watching %s" % (username)
         else:
             _watch_users.append(username)
-            #TODO: save
+            with open('watchedusers.txt', 'w') as f:
+                f.write("\n".join(_watch_users) + "\n")
             response = "We are now watching %s" % (username)
 
         irc.reply(response.encode('utf-8'))
@@ -747,7 +748,8 @@ class OSM(callbacks.Plugin):
 
         if username in _watch_users: 
             _watch_users.remove(username)
-            #TODO: save
+            with open('watchedusers.txt', 'w') as f:
+                f.write("\n".join(_watch_users) + "\n")
             response = "Stopped watching %s" % (username)
         else:
             response = "We weren't watching %s" % (username)
