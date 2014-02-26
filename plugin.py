@@ -137,8 +137,6 @@ _note_edit_region_channels = {
     "#osmiebot": ("Leinster","Munster","Ulster","Connacht","ie", ),
 }
 
-_watch_users = []
-
 
 class OSM(callbacks.Plugin):
     """Add the help for "@plugin help OSM" here
@@ -149,7 +147,14 @@ class OSM(callbacks.Plugin):
         self.__parent__ = super(OSM, self)
         self.__parent__.__init__(irc)
         self.seen_changesets = {}
+        self.watch_users = [] 
         self.irc = irc
+        #load watched users
+        if os.path.exists('watchedusers.txt'):
+            log.info('Loading watched users')
+            with open('watchedusers.txt') as f:
+                self.watch_users = f.read().splitlines()
+            log.info("Watching %s" % (', '.join(self.watch_users)))
         self._start_polling()
 
     def die(self):
@@ -425,7 +430,7 @@ class OSM(callbacks.Plugin):
             f = open('uid.txt', 'r')
             for line in f:
                 for uid in seen_uids.keys():
-                    if uid in line and seen_uids[uid]['username'] not in _watch_users:
+                    if uid in line and seen_uids[uid]['username'] not in self.watch_users:
                         seen_uids.pop(uid)
                         continue
                 if len(seen_uids) == 0:
@@ -437,7 +442,7 @@ class OSM(callbacks.Plugin):
 
             f = open('uid.txt', 'a')
             for (uid, data) in seen_uids.iteritems():
-                if data['username'] not in _watch_users:
+                if data['username'] not in self.watch_users:
                     f.write('%s\t%s\n' % (data['username'], uid))
 
                 location = ""
@@ -447,7 +452,7 @@ class OSM(callbacks.Plugin):
                         country_code, location = self.reverse_geocode(data['lat'], data['lon'])
                     except urllib2.HTTPError as e:
                         log.error("HTTP problem when looking for edit location: %s" % (e))
-                if data['username'] not in _watch_users:
+                if data['username'] not in self.watch_users:
                     response = "%s just started editing%s with changeset http://osm.org/changeset/%s" % (data['username'], location, data['changeset'])
                 else:
                     response = "Watched user %s editing%s with changeset http://osm.org/changeset/%s" % (data['username'], location, data['changeset'])
@@ -725,12 +730,12 @@ class OSM(callbacks.Plugin):
             log.error(traceback.format_exc(e))
             return
 
-        if username in _watch_users: 
+        if username in self.watch_users: 
             response = "We are already watching %s" % (username)
         else:
-            _watch_users.append(username)
+            self.watch_users.append(username)
             with open('watchedusers.txt', 'w') as f:
-                f.write("\n".join(_watch_users) + "\n")
+                f.write("\n".join(self.watch_users) + "\n")
             response = "We are now watching %s" % (username)
 
         irc.reply(response.encode('utf-8'))
@@ -746,10 +751,10 @@ class OSM(callbacks.Plugin):
             irc.error('You forgot to give me a username.')
             return
 
-        if username in _watch_users: 
-            _watch_users.remove(username)
+        if username in self.watch_users: 
+            self.watch_users.remove(username)
             with open('watchedusers.txt', 'w') as f:
-                f.write("\n".join(_watch_users) + "\n")
+                f.write("\n".join(self.watch_users) + "\n")
             response = "Stopped watching %s" % (username)
         else:
             response = "We weren't watching %s" % (username)
@@ -760,10 +765,10 @@ class OSM(callbacks.Plugin):
     def watching(self, irc, msg, args):
         """Show list of users we are reporting edits for"""
 
-        if not _watch_users:
+        if not self.watch_users:
             response = "We are not watching anybody yet"
         else:
-            watched_users = ', '.join(_watch_users) 
+            watched_users = ', '.join(self.watch_users) 
             response = "Watching %s" % (watched_users)
 
         irc.reply(response.encode('utf-8'))
