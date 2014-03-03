@@ -233,7 +233,7 @@ class OSM(callbacks.Plugin):
                 state_district = address.get('state_district')
                 #location = "%s, %s" % (address.get('state_district'), location)
             if 'county' in address:
-                location = "%s, %s" % (address.get('county'), location)
+                location = address.get('county')
             if 'administrative' in address:
                 location = "%s, %s" % (address.get('administrative'), location)
             if 'city' in address:
@@ -836,10 +836,12 @@ class OSM(callbacks.Plugin):
 
         # Strip off the word "Changeset " from the title to get the number
         changeset_id = entry_id[39:]
+        #TODO: tags are already in the feed
+        changeset = self.changeset_details(int(changeset_id)) 
 
         updated = isoToDatetime(timestamp)
 
-        response = "User %s last edited %s with changeset http://osm.org/changeset/%s" % (author, prettyDate(updated), changeset_id)
+        response = "User %s last edited %s with changeset http://osm.org/changeset/%s with %s" % (author, prettyDate(updated), changeset_id, changeset['tags'])
 
         irc.reply(response.encode('utf-8'))
     lastedit = wrap(last_edit, ['anything'])
