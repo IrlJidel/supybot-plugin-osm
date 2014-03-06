@@ -499,8 +499,7 @@ class OSM(callbacks.Plugin):
             xml = urllib2.urlopen('%s/api/0.6/node/%d' % (baseUrl, node_id))
         except urllib2.HTTPError as e:
             if e.code == 410:
-                last_mod = datetime.datetime.strptime(e.headers.get('Last-Modified'), '%a, %d %b %Y %H:%M:%S %Z')
-                irc.reply('Node %s was deleted %s ago.' % (node_id, prettyDate(last_mod)))
+                irc.reply('Node %s was deleted.' % (node_id))
             elif e.code == 404:
                 irc.error('Node %s was not found.' % (node_id))
             else:
@@ -554,8 +553,7 @@ class OSM(callbacks.Plugin):
             xml = urllib2.urlopen('%s/api/0.6/way/%d' % (baseUrl, way_id))
         except urllib2.HTTPError as e:
             if e.code == 410:
-                last_mod = datetime.datetime.strptime(e.headers.get('Last-Modified'), '%a, %d %b %Y %H:%M:%S %Z')
-                irc.reply('Way %s was deleted %s ago.' % (way_id, prettyDate(last_mod)))
+                irc.reply('Way %s was deleted.' % (way_id))
             elif e.code == 404:
                 irc.error('Way %s was not found.' % (way_id))
             else:
@@ -612,8 +610,7 @@ class OSM(callbacks.Plugin):
             xml = urllib2.urlopen('%s/api/0.6/relation/%d' % (baseUrl, relation_id))
         except urllib2.HTTPError as e:
             if e.code == 410:
-                last_mod = datetime.datetime.strptime(e.headers.get('Last-Modified'), '%a, %d %b %Y %H:%M:%S %Z')
-                irc.reply('Relation %s was deleted %s ago.' % (relation_id, prettyDate(last_mod)))
+                irc.reply('Relation %s was deleted.' % (relation_id))
             elif e.code == 404:
                 irc.error('Relation %s was not found.' % (relation_id))
             else:
@@ -884,8 +881,8 @@ class OSM(callbacks.Plugin):
                 j = urllib2.urlopen('%s/api/2/db/tags/overview?key=%s&value=%s' % (baseUrl, urllib.quote(k), urllib.quote(v)), timeout=30.0)
                 data = json.load(j)
 
-                response = "Tag %s=%s appears %s times in the %s. %s/tags/%s" % (k, v, data['all']['count'], region, baseUrl, urllib.quote("%s=%s" % (k,v)))
-            irc.reply(response.encode('utf-8'))
+                response = "Tag %s=%s appears %s times in the %s. %s/tags/%s=%s" % (k, v, data['all']['count'], region, baseUrl, urllib.quote(k), urllib.quote(v))
+            irc.reply(response)
         except urllib2.URLError as e:
             irc.error("There was an error connecting to %s server. Try again later." % baseUrl)
             return
