@@ -509,8 +509,7 @@ class OSM(callbacks.Plugin):
             xml = urllib2.urlopen(req)
         except urllib2.HTTPError as e:
             if e.code == 410:
-                last_mod = datetime.datetime.strptime(e.headers.get('Last-Modified'), '%a, %d %b %Y %H:%M:%S %Z')
-                irc.reply('Node %s was deleted %s ago.' % (node_id, prettyDate(last_mod)))
+                irc.reply('Node %s was deleted.' % (node_id))
             elif e.code == 404:
                 irc.error('Node %s was not found.' % (node_id))
             else:
@@ -565,8 +564,7 @@ class OSM(callbacks.Plugin):
             xml = urllib2.urlopen(req)
         except urllib2.HTTPError as e:
             if e.code == 410:
-                last_mod = datetime.datetime.strptime(e.headers.get('Last-Modified'), '%a, %d %b %Y %H:%M:%S %Z')
-                irc.reply('Way %s was deleted %s ago.' % (way_id, prettyDate(last_mod)))
+                irc.reply('Way %s was deleted.' % (way_id))
             elif e.code == 404:
                 irc.error('Way %s was not found.' % (way_id))
             else:
@@ -624,8 +622,7 @@ class OSM(callbacks.Plugin):
             xml = urllib2.urlopen(req)
         except urllib2.HTTPError as e:
             if e.code == 410:
-                last_mod = datetime.datetime.strptime(e.headers.get('Last-Modified'), '%a, %d %b %Y %H:%M:%S %Z')
-                irc.reply('Relation %s was deleted %s ago.' % (relation_id, prettyDate(last_mod)))
+                irc.reply('Relation %s was deleted.' % (relation_id))
             elif e.code == 404:
                 irc.error('Relation %s was not found.' % (relation_id))
             else:
