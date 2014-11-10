@@ -24,6 +24,7 @@ import urllib
 import xml.etree.cElementTree as ElementTree
 import os
 import json
+import time
 
 
 stathat = None
@@ -127,14 +128,13 @@ def parseOsm(source, handler):
         elem.clear()
 
 _new_uid_edit_region_channels = {
-    "#osm-ie": ("Leinster","Munster","Ulster","Connacht","ie", ),
-    "#osmiebot": ("Leinster","Munster","Ulster","Connacht","ie", ),
+    "#osm-ie":   ("Northern Ireland", "ie", ),
+    "#osmiebot": ("Northern Ireland", "ie", ),
 }
 
 _note_edit_region_channels = {
-
-    "#osm-ie": ("Leinster","Munster","Ulster","Connacht","ie", ),
-    "#osmiebot": ("Leinster","Munster","Ulster","Connacht","ie", ),
+    "#osm-ie":   ("Northern Ireland", "ie", ),
+    "#osmiebot": ("Northern Ireland", "ie", ),
 }
 
 
@@ -204,7 +204,7 @@ class OSM(callbacks.Plugin):
             statefile.write(u.read())
             statefile.close()
         except Exception, e:
-            print e
+            log.error("Error getting statefile from %s: %s" % (url,e))
             return False
 
         return True
@@ -218,28 +218,29 @@ class OSM(callbacks.Plugin):
 
         location = ""
         country_code = None
-        state_district = None
+        state = None
         info = json.load(urldata)
         if 'address' in info:
             address = info.get('address')
 
             country_code = address.get('country_code')
+            # Northern Ireland has state, Ireland doesn't
+            if 'state' in address:
+                state = address.get('state')
 
-            #if 'country' in address:
-            #    location = address.get('country')
-            #if 'state' in address:
-            #    location = "%s, %s" % (address.get('state'), location)
-            if 'state_district' in address:
-                state_district = address.get('state_district')
-                #location = "%s, %s" % (address.get('state_district'), location)
+            # build location address from county downwards
             if 'county' in address:
                 location = address.get('county')
             if 'administrative' in address:
                 location = "%s, %s" % (address.get('administrative'), location)
             if 'city' in address:
                 location = "%s, %s" % (address.get('city'), location)
+            if 'town' in address:
+                location = "%s, %s" % (address.get('town'), location)
             if 'village' in address:
                 location = "%s, %s" % (address.get('village'), location)
+            if 'suburb' in address:
+                location = "%s, %s" % (address.get('suburb'), location)
             if 'hamlet' in address:
                 location = "%s, %s" % (address.get('hamlet'), location)
             if 'locality' in address:
@@ -250,8 +251,8 @@ class OSM(callbacks.Plugin):
             location = " near %s" % (location)
             location = location.encode('utf-8')
 
-        if state_district is not None:
-            return (state_district, location)
+        if state is not None:
+            return (state, location)
         else: 
             return (country_code, location)
 
@@ -278,6 +279,7 @@ class OSM(callbacks.Plugin):
                     attrs = note.get('properties')
                     opening_comment = attrs['comments'][0]
                     author = opening_comment['user'].encode('utf-8') if 'user' in opening_comment else 'Anonymous'
+                    text = opening_comment['text'].encode('utf-8') if 'text' in opening_comment else 'Empty text'
                     date_created = datetime.datetime.strptime(attrs['date_created'], "%Y-%m-%d %H:%M:%S %Z")
                     geo = note.get('geometry').get('coordinates')
                     link = 'http://osm.org/note/%d' % last_note_id
@@ -296,7 +298,7 @@ class OSM(callbacks.Plugin):
                         except urllib2.HTTPError as e:
                             log.error("HTTP problem when looking for note location: %s" % (e))
 
-                    response = "%s posted a new note%s %s %s" % (author, location, date_created, link)
+                    response = "%s posted a new note%s %s with text '%s'" % (author, location, link, text)
                     log.info("Response is %s" % response)
                     irc = world.ircs[0]
                     for chan in irc.state.channels:
@@ -669,7 +671,7 @@ class OSM(callbacks.Plugin):
 	    irc.error('Changeset %s was not found.' % (changeset_id))
 	    return
 
-	response = "Changeset %s by %s opened %s %s with %s" % \
+	response = "Changeset http://osm.org/changeset/%s by %s opened %s %s with %s" % \
 		(changeset['id'], changeset['username'], changeset['created'], changeset['length'], changeset['tags'])
 
 
@@ -725,7 +727,7 @@ class OSM(callbacks.Plugin):
 
 
     def watch(self, irc, msg, args, username):
-        """<username>
+        """\"<username>\"
 
         Start reporting on edits for the given user."""
         baseUrl = "http://osm.org"
@@ -761,7 +763,7 @@ class OSM(callbacks.Plugin):
 
 
     def unwatch(self, irc, msg, args, username):
-        """<username>
+        """\"<username>\"
 
         Stop reporting on edits for the given user."""
 
@@ -791,8 +793,39 @@ class OSM(callbacks.Plugin):
         irc.reply(response.encode('utf-8'))
     watching = wrap(watching)
 
+    def sing(self, irc, msg, args):
+        """Sing bots national anthem"""
+
+        lines = ( 
+            "Every node you make...we'll be watching you...",
+            "Every way you draw....",
+            "Every relation you group....",
+            "Every typo you make, every way you break",
+            "Every tag you fake...",
+            "Every way you glue...",
+            "We'll be watching you",
+            "Oh can't you see?",
+            "The data belongs to we.",
+            "That's why we QA.",
+            "Every single way.", )
+
+        for line in lines:
+            response = line
+            irc.reply(response.encode('utf-8'))
+            time.sleep(0.5)
+
+    sing = wrap(sing)
+
+    def botsnack(self, irc, msg, args):
+        """Give bot a snack"""
+        
+        response = "YUM!"
+        irc.reply(response.encode('utf-8'))
+
+    botsnack = wrap(botsnack)
+
     def last_edit(self, irc, msg, args, username):
-        """<username>
+        """\"<username>\"
 
         Shows information about the last edit for the given user."""
         baseUrl = "http://osm.org"
@@ -873,15 +906,16 @@ class OSM(callbacks.Plugin):
 
         try:
             if v is None:
-                j = urllib2.urlopen('%s/api/2/db/keys/overview?key=%s' % (baseUrl, urllib.quote(k)), timeout=30.0)
+                j = urllib2.urlopen('%s/api/4/key/stats?key=%s' % (baseUrl, urllib.quote(k)), timeout=30.0)
                 data = json.load(j)
 
-                response = "Tag %s has %s values and appears %s times in the %s. %s/keys/%s" % (k, data['all']['values'], data['all']['count'], region, baseUrl, urllib.quote(k))
+                response = "Tag %s has %s values and appears %s times in the %s. %s/keys/%s" % (k, data['data'][0]['values'], data['data'][0]['count'], region, baseUrl, urllib.quote(k))
+                
             else:
-                j = urllib2.urlopen('%s/api/2/db/tags/overview?key=%s&value=%s' % (baseUrl, urllib.quote(k), urllib.quote(v)), timeout=30.0)
+                j = urllib2.urlopen('%s/api/4/tag/stats?key=%s&value=%s' % (baseUrl, urllib.quote(k), urllib.quote(v)), timeout=30.0)
                 data = json.load(j)
 
-                response = "Tag %s=%s appears %s times in the %s. %s/tags/%s=%s" % (k, v, data['all']['count'], region, baseUrl, urllib.quote(k), urllib.quote(v))
+                response = "Tag %s=%s appears %s times in the %s. %s/tags/%s=%s" % (k, v, data['data'][0]['count'], region, baseUrl, urllib.quote(k), urllib.quote(v))
             irc.reply(response)
         except urllib2.URLError as e:
             irc.error("There was an error connecting to %s server. Try again later." % baseUrl)
