@@ -279,7 +279,7 @@ class OSM(callbacks.Plugin):
                     attrs = note.get('properties')
                     opening_comment = attrs['comments'][0]
                     author = opening_comment['user'].encode('utf-8') if 'user' in opening_comment else 'Anonymous'
-                    text = opening_comment['text'].encode('utf-8') if 'text' in opening_comment else 'Empty text'
+                    text = opening_comment['text'].replace("\n"," ").encode('utf-8') if 'text' in opening_comment else 'Empty text'
                     date_created = datetime.datetime.strptime(attrs['date_created'], "%Y-%m-%d %H:%M:%S %Z")
                     geo = note.get('geometry').get('coordinates')
                     link = 'http://osm.org/note/%d' % last_note_id
@@ -311,7 +311,7 @@ class OSM(callbacks.Plugin):
                         last_note_id -= 1
 
                         if (datetime.datetime.utcnow() - last_note_time).total_seconds() > 7200:
-                            msg = ircmsgs.privmsg('IrlJidel_w', "No new notes since %s." % prettyDate(last_note_time))
+                            msg = ircmsgs.privmsg('IrlJidel_w', "No new notes since %s. Last note %d." % prettyDate(last_note_time), last_note_id )
                             world.ircs[0].queueMsg(msg)
 
                         break
