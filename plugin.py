@@ -163,7 +163,7 @@ class OSM(callbacks.Plugin):
 
     def _start_polling(self):
         log.info('Start polling.')
-        schedule.addPeriodicEvent(self._minutely_diff_poll, 60, now=True, name='minutely_poll')
+        schedule.addPeriodicEvent(self._minutely_diff_poll, 300, now=True, name='minutely_poll')
         schedule.addPeriodicEvent(self._notes_rss_poll, 60, now=True, name='notes_rss_poll')
 
     def _stop_polling(self):
@@ -197,7 +197,8 @@ class OSM(callbacks.Plugin):
         # Download the next state file
         nextSqn = int(currentState['sequenceNumber']) + 1
         sqnStr = str(nextSqn).zfill(9)
-        url = "http://planet.openstreetmap.org/replication/minute/%s/%s/%s.state.txt" % (sqnStr[0:3], sqnStr[3:6], sqnStr[6:9])
+        #url = "http://planet.openstreetmap.org/replication/minute/%s/%s/%s.state.txt" % (sqnStr[0:3], sqnStr[3:6], sqnStr[6:9])
+        url = "http://planet.openstreetmap.ie/replication/15minute/%s/%s/%s.state.txt" % (sqnStr[0:3], sqnStr[3:6], sqnStr[6:9])
         try:
             u = urllib2.urlopen(url)
             statefile = open('state.txt', 'w')
@@ -235,6 +236,8 @@ class OSM(callbacks.Plugin):
                 location = "%s, %s" % (address.get('administrative'), location)
             if 'city' in address:
                 location = "%s, %s" % (address.get('city'), location)
+            if 'municipal_district' in address:
+                location = "%s, %s" % (address.get('municipal_district'), location)
             if 'town' in address:
                 location = "%s, %s" % (address.get('town'), location)
             if 'village' in address:
@@ -299,10 +302,10 @@ class OSM(callbacks.Plugin):
                             log.error("HTTP problem when looking for note location: %s" % (e))
 
                     response = "%s posted a new note%s %s with text '%s'" % (author, location, link, text)
-                    log.info("Response is %s" % response)
                     irc = world.ircs[0]
                     for chan in irc.state.channels:
                         if country_code in _note_edit_region_channels.get(chan, ()):
+                            log.info("%s" % response)
                             msg = ircmsgs.privmsg(chan, response)
                             world.ircs[0].queueMsg(msg)
                 except urllib2.URLError, e:
@@ -340,7 +343,8 @@ class OSM(callbacks.Plugin):
 
                 # Grab the next sequence number and build a URL out of it
                 sqnStr = state['sequenceNumber'].zfill(9)
-                url = "http://planet.openstreetmap.org/replication/minute/%s/%s/%s.osc.gz" % (sqnStr[0:3], sqnStr[3:6], sqnStr[6:9])
+                #url = "http://planet.openstreetmap.org/replication/minute/%s/%s/%s.osc.gz" % (sqnStr[0:3], sqnStr[3:6], sqnStr[6:9])
+                url = "http://planet.openstreetmap.ie/replication/15minute/%s/%s/%s.osc.gz" % (sqnStr[0:3], sqnStr[3:6], sqnStr[6:9])
 
                 log.info("Downloading change file (%s)." % (url))
                 content = urllib2.urlopen(url)
