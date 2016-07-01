@@ -25,6 +25,7 @@ import xml.etree.cElementTree as ElementTree
 import os
 import json
 import time
+import re
 
 
 stathat = None
@@ -136,6 +137,8 @@ _note_edit_region_channels = {
     "#osm-ie":   ("Northern Ireland", "ie", ),
     "#osmiebot": ("Northern Ireland", "ie", ),
 }
+
+_note_cleaning_re = re.compile("\s+", flags=re.UNICODE)
 
 
 class OSM(callbacks.Plugin):
@@ -261,6 +264,7 @@ class OSM(callbacks.Plugin):
 
     def _notes_rss_poll(self):
         url_templ = 'http://api.openstreetmap.org/api/0.6/notes/%d.json'
+        short_text_len = 64
 
         try:
             if not os.path.exists('notes_state.txt'):
@@ -280,9 +284,14 @@ class OSM(callbacks.Plugin):
                     result = urllib2.urlopen(url)
                     note = json.load(result)
                     attrs = note.get('properties')
-                    opening_comment = attrs['comments'][0]
-                    author = opening_comment['user'].encode('utf-8') if 'user' in opening_comment else 'Anonymous'
-                    text = opening_comment['text'].replace("\n"," ").encode('utf-8') if 'text' in opening_comment else 'Empty text'
+                    if len(attrs['comments']) > 0:
+                        opening_comment = attrs['comments'][0]
+                        author = opening_comment['user'].encode('utf-8') if 'user' in opening_comment else 'Anonymous'
+                        full_text = _note_cleaning_re.sub(' ', opening_comment['text'])
+                        short_text = ((full_text[:short_text_len-1] + u'\u2026') if len(full_text) > short_text_len else full_text).encode('utf-8')
+                    else:
+                        author = "Unknown"
+                        short_text = "-No comment specified-"
                     date_created = datetime.datetime.strptime(attrs['date_created'], "%Y-%m-%d %H:%M:%S %Z")
                     geo = note.get('geometry').get('coordinates')
                     link = 'http://osm.org/note/%d' % last_note_id
@@ -301,7 +310,7 @@ class OSM(callbacks.Plugin):
                         except urllib2.HTTPError as e:
                             log.error("HTTP problem when looking for note location: %s" % (e))
 
-                    response = "%s posted a new note%s %s with text '%s'" % (author, location, link, text)
+                    response = '%s posted a new note%s %s ("%s")' % (author, location, link, short_text)
                     irc = world.ircs[0]
                     for chan in irc.state.channels:
                         if country_code in _note_edit_region_channels.get(chan, ()):
